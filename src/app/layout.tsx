@@ -4,13 +4,14 @@ import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import CookieBanner from "@/components/ui/CookieBanner";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "Dojo.info — Formations TSSR, TAI, AIS",
   description:
-    "Plateforme de formation révolutionnaire pour étudiants en informatique. Cours complets TSSR, TAI, AIS alignés sur Éduscol avec actualités tech en temps réel.",
+    "Plateforme de formation révolutionnaire pour étudiants en informatique. Cours complets TSSR, TAI, AIS avec actualités tech en temps réel.",
   keywords: ["BTS SIO", "TSSR", "TAI", "AIS", "formation informatique", "cybersécurité", "réseaux"],
   openGraph: {
     title: "Dojo.info — Formations TSSR, TAI, AIS",
@@ -27,10 +28,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://images.unsplash.com" />
       </head>
       <body className="mesh-gradient grid-bg min-h-screen antialiased">
-        <Navbar />
-        <main>{children}</main>
-        <Footer />
-        <CookieBanner />
+        <AuthProvider>
+          <Navbar />
+          <main>{children}</main>
+          <Footer />
+          <CookieBanner />
+        </AuthProvider>
       </body>
     </html>
   );

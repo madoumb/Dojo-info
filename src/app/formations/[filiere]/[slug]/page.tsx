@@ -5,6 +5,7 @@ import { courses, filiereConfig } from "@/data/courses";
 import { courseContents } from "@/data/course-content";
 import { cn } from "@/lib/utils";
 import { Filiere } from "@/types";
+import CourseProgressSidebar from "@/components/courses/CourseProgressSidebar";
 
 interface Props {
   params: Promise<{ filiere: string; slug: string }>;
@@ -195,19 +196,16 @@ export default async function CoursePage({ params }: Props) {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            <div className="glass rounded-2xl p-5 border border-white/5">
-              <h3 className="text-white font-semibold mb-4">Votre progression</h3>
-              <div className="relative h-2 bg-white/10 rounded-full mb-2">
-                <div className={cn("absolute left-0 top-0 h-full rounded-full bg-gradient-to-r", config.color)} style={{ width: "0%" }} />
-              </div>
-              <p className="text-slate-500 text-xs">0/{modules.length} modules complétés</p>
-            </div>
+            <CourseProgressSidebar
+              courseSlug={course.slug}
+              modules={modules}
+              colorClass={config.color}
+            />
 
-            <div className="glass rounded-2xl p-5 border border-white/5">
-              <h3 className="text-white font-semibold mb-4">Plan du cours</h3>
+            <div className="glass rounded-2xl p-5 border border-white/5 hidden">
               <div className="space-y-2">
                 {modules.map((mod, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl text-sm bg-white/2 border border-white/5 hover:border-purple-500/20 transition-colors">
+                  <div key={i} className="flex items-center gap-3 p-3 rounded-xl text-sm bg-white/2 border border-white/5">
                     <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs flex-shrink-0 bg-white/10 text-slate-500">
                       {i + 1}
                     </span>
