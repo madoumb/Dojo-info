@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -27,7 +28,7 @@ export function useProgress(courseSlug: string, totalModules: number) {
 
     const fetchProgress = async () => {
       setLoading(true);
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("course_progress")
         .select("modules")
         .eq("user_id", user.id)
@@ -65,7 +66,7 @@ export function useProgress(courseSlug: string, totalModules: number) {
       );
       setProgress(updated);
 
-      await supabase.from("course_progress").upsert(
+      await (supabase as any).from("course_progress").upsert(
         {
           user_id: user.id,
           course_slug: courseSlug,
@@ -80,7 +81,7 @@ export function useProgress(courseSlug: string, totalModules: number) {
 
   const markStarted = useCallback(async () => {
     if (!user) return;
-    await supabase.from("course_progress").upsert(
+    await (supabase as any).from("course_progress").upsert(
       {
         user_id: user.id,
         course_slug: courseSlug,
@@ -108,14 +109,14 @@ export function useAllProgress() {
     }
 
     const fetchAll = async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("course_progress")
         .select("course_slug, modules")
         .eq("user_id", user.id);
 
       if (data) {
         const map: Record<string, number> = {};
-        data.forEach((row) => {
+        data.forEach((row: any) => {
           const total = row.modules?.length || 0;
           const done = row.modules?.filter((m: ModuleProgress) => m.completed).length || 0;
           map[row.course_slug] = total > 0 ? Math.round((done / total) * 100) : 0;
