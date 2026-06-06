@@ -49,16 +49,66 @@ const modulesByCourse: Record<string, { title: string; duration: string }[]> = {
     { title: "Cron et automatisation", duration: "1h" },
     { title: "QCM de validation", duration: "20 min" },
   ],
+  "securite-offensive-pentest": [
+    { title: "Cadre légal et méthodologie pentest", duration: "1h" },
+    { title: "Reconnaissance et OSINT", duration: "1h30" },
+    { title: "Scan et énumération (Nmap, Gobuster)", duration: "1h30" },
+    { title: "Injection SQL", duration: "2h" },
+    { title: "XSS et CSRF", duration: "1h30" },
+    { title: "Outils du pentester (Burp Suite, Metasploit)", duration: "2h" },
+    { title: "Élévation de privilèges Linux/Windows", duration: "2h" },
+    { title: "Post-exploitation et pivoting", duration: "1h30" },
+    { title: "Rédiger un rapport de pentest", duration: "1h" },
+    { title: "TP — CTF complet guidé", duration: "4h" },
+    { title: "QCM de validation", duration: "20 min" },
+  ],
+  "soc-siem-blue-team": [
+    { title: "Architecture d'un SOC", duration: "1h" },
+    { title: "Déploiement de Wazuh SIEM", duration: "2h" },
+    { title: "Analyse de logs et détection", duration: "2h" },
+    { title: "Threat Hunting avec MITRE ATT&CK", duration: "1h30" },
+    { title: "Réponse à incident (IR)", duration: "2h" },
+    { title: "Forensics Linux/Windows", duration: "2h" },
+    { title: "TP — Simulation d'incident complet", duration: "4h" },
+    { title: "QCM de validation", duration: "20 min" },
+  ],
+  "reseaux-tcp-ip-vlan": [
+    { title: "Modèle OSI et TCP/IP", duration: "1h30" },
+    { title: "Adressage IPv4 et sous-réseaux (VLSM)", duration: "2h" },
+    { title: "VLANs et 802.1Q", duration: "1h30" },
+    { title: "Routage OSPF", duration: "2h" },
+    { title: "Sécurité réseau (ACL, port-security)", duration: "1h30" },
+    { title: "TP — Maquette réseau complète Cisco", duration: "4h" },
+    { title: "QCM de validation", duration: "20 min" },
+  ],
+  "virtualisation-proxmox-vmware": [
+    { title: "Concepts de virtualisation", duration: "1h" },
+    { title: "Proxmox VE — Installation et configuration", duration: "1h30" },
+    { title: "Haute disponibilité (HA)", duration: "1h30" },
+    { title: "Sauvegarde et restauration (PBS)", duration: "1h" },
+    { title: "Conteneurs LXC", duration: "1h" },
+    { title: "TP — Infrastructure virtualisée complète", duration: "3h" },
+    { title: "QCM de validation", duration: "20 min" },
+  ],
+  "automates-programmables-siemens": [
+    { title: "Architecture d'un automate Siemens S7", duration: "1h" },
+    { title: "Programmation Ladder (LD)", duration: "2h" },
+    { title: "Blocs de données (DB) et structuration", duration: "1h30" },
+    { title: "Communication et réseaux automates", duration: "1h30" },
+    { title: "Diagnostic et dépannage TIA Portal", duration: "1h" },
+    { title: "TP — Programme complet sur S7-1200", duration: "4h" },
+    { title: "QCM de validation", duration: "20 min" },
+  ],
+  "reseaux-industriels-modbus": [
+    { title: "Protocole Modbus RTU/TCP", duration: "1h30" },
+    { title: "Profibus et Profinet", duration: "1h30" },
+    { title: "Sécurité des réseaux OT/ICS", duration: "1h30" },
+    { title: "SCADA et supervision WinCC", duration: "2h" },
+    { title: "Cybersécurité OT pratique", duration: "1h" },
+    { title: "TP — Intégration réseau industriel complet", duration: "4h" },
+    { title: "QCM de validation", duration: "20 min" },
+  ],
 };
-
-const DEFAULT_MODULES = [
-  { title: "Introduction et prérequis", duration: "30 min" },
-  { title: "Concepts théoriques fondamentaux", duration: "2h" },
-  { title: "Mise en pratique guidée", duration: "2h" },
-  { title: "Cas d'usage professionnel", duration: "1h30" },
-  { title: "Travaux pratiques", duration: "3h" },
-  { title: "QCM de validation", duration: "20 min" },
-];
 
 export default async function CoursePage({ params }: Props) {
   const { filiere, slug } = await params;
@@ -67,7 +117,13 @@ export default async function CoursePage({ params }: Props) {
 
   const config = filiereConfig[filiere as Filiere];
   const content = courseContents[slug];
-  const modules = modulesByCourse[slug] || DEFAULT_MODULES;
+  const modules = modulesByCourse[slug] || [
+    { title: "Introduction et prérequis", duration: "30 min" },
+    { title: "Concepts fondamentaux", duration: "2h" },
+    { title: "Mise en pratique", duration: "2h" },
+    { title: "Travaux pratiques", duration: "3h" },
+    { title: "QCM de validation", duration: "20 min" },
+  ];
 
   return (
     <div className="min-h-screen pt-28 pb-20">
