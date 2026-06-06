@@ -113,6 +113,17 @@ const modulesByCourse: Record<string, { title: string; duration: string }[]> = {
   ],
 };
 
+const docsLinks: Record<string, string> = {
+  "administration-windows-server": "https://learn.microsoft.com/fr-fr/windows-server/",
+  "linux-debian-admin": "https://www.debian.org/doc/manuals/debian-reference/",
+  "securite-offensive-pentest": "https://owasp.org/www-project-top-ten/",
+  "soc-siem-blue-team": "https://attack.mitre.org/",
+  "reseaux-tcp-ip-vlan": "https://www.cisco.com/c/fr_fr/support/index.html",
+  "virtualisation-proxmox-vmware": "https://pve.proxmox.com/pve-docs/",
+  "automates-programmables-siemens": "https://support.industry.siemens.com/cs/fr/fr/",
+  "reseaux-industriels-modbus": "https://modbus.org/specs.php",
+};
+
 export default async function CoursePage({ params }: Props) {
   const { filiere, slug } = await params;
   const course = courses.find((c) => c.filiere === filiere && c.slug === slug);
@@ -120,6 +131,7 @@ export default async function CoursePage({ params }: Props) {
 
   const config = filiereConfig[filiere as Filiere];
   const content = courseContents[slug];
+  const docUrl = docsLinks[slug];
   const modules = modulesByCourse[slug] || [
     { title: "Introduction et prérequis", duration: "30 min" },
     { title: "Concepts fondamentaux", duration: "2h" },
@@ -292,16 +304,18 @@ export default async function CoursePage({ params }: Props) {
                 {content && (
                   <DownloadPDFButton course={{ title: course.title, description: course.description, intro: content.intro, sections: content.sections }} />
                 )}
-                {[
-                  { icon: "🛠", label: "TP avec corrigé", tag: "ZIP" },
-                  { icon: "🔗", label: "Documentation officielle", tag: "EXT" },
-                ].map((r) => (
-                  <div key={r.label} className="flex items-center gap-3 p-3 bg-white/2 rounded-xl border border-white/5 hover:border-purple-500/20 cursor-pointer transition-colors group">
-                    <span>{r.icon}</span>
-                    <span className="text-slate-300 text-sm flex-1 group-hover:text-white transition-colors">{r.label}</span>
-                    <span className="text-xs bg-white/10 text-slate-500 px-2 py-0.5 rounded">{r.tag}</span>
-                  </div>
-                ))}
+                <div className="flex items-center gap-3 p-3 bg-white/2 rounded-xl border border-white/5 border-dashed opacity-50 cursor-not-allowed">
+                  <span>🛠</span>
+                  <span className="text-slate-400 text-sm flex-1">TP avec corrigé</span>
+                  <span className="text-xs bg-white/5 text-slate-600 px-2 py-0.5 rounded">Bientôt</span>
+                </div>
+                {docUrl && (
+                  <a href={docUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-white/2 rounded-xl border border-white/5 hover:border-purple-500/20 transition-colors group">
+                    <span>🔗</span>
+                    <span className="text-slate-300 text-sm flex-1 group-hover:text-white transition-colors">Documentation officielle</span>
+                    <span className="text-xs bg-white/10 text-slate-500 px-2 py-0.5 rounded">EXT</span>
+                  </a>
+                )}
               </div>
             </div>
           </div>
