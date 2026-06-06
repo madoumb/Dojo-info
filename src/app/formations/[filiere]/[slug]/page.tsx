@@ -3,9 +3,12 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { courses, filiereConfig } from "@/data/courses";
 import { courseContents } from "@/data/course-content";
+import { quizzes } from "@/data/quizzes";
 import { cn } from "@/lib/utils";
 import { Filiere } from "@/types";
 import CourseProgressSidebar from "@/components/courses/CourseProgressSidebar";
+import QuizComponent from "@/components/courses/QuizComponent";
+import DownloadPDFButton from "@/components/courses/DownloadPDFButton";
 
 interface Props {
   params: Promise<{ filiere: string; slug: string }>;
@@ -242,6 +245,14 @@ export default async function CoursePage({ params }: Props) {
               </div>
             )}
 
+            {/* Quiz */}
+            {quizzes[slug] && (
+              <div className="glass rounded-2xl p-6 border border-purple-500/20 space-y-4">
+                <h2 className="text-lg font-bold text-white">🎯 QCM de validation</h2>
+                <QuizComponent quiz={quizzes[slug]} />
+              </div>
+            )}
+
             {/* Tags */}
             <div className="flex flex-wrap gap-2">
               {course.tags.map((tag) => (
@@ -278,8 +289,10 @@ export default async function CoursePage({ params }: Props) {
             <div className="glass rounded-2xl p-5 border border-white/5">
               <h3 className="text-white font-semibold mb-4">Ressources</h3>
               <div className="space-y-2">
+                {content && (
+                  <DownloadPDFButton course={{ title: course.title, description: course.description, intro: content.intro, sections: content.sections }} />
+                )}
                 {[
-                  { icon: "📄", label: "Fiche récap PDF", tag: "PDF" },
                   { icon: "🛠", label: "TP avec corrigé", tag: "ZIP" },
                   { icon: "🔗", label: "Documentation officielle", tag: "EXT" },
                 ].map((r) => (

@@ -17,8 +17,29 @@ export const courseContents: Record<string, CourseContent> = {
     intro: "Windows Server 2022 est le système d'exploitation serveur de Microsoft. Il est au cœur de la quasi-totalité des infrastructures d'entreprise en France. Ce cours vous prépare à administrer un domaine Active Directory complet, gérer les politiques de groupe, configurer les services réseau DHCP et DNS.",
     sections: [
       {
-        title: "1. Active Directory — Concepts fondamentaux",
-        content: `Active Directory (AD DS) est un service d'annuaire qui centralise l'authentification et l'autorisation dans un réseau Windows. Il repose sur trois composants essentiels :\n\n**Domaine** : unité d'administration de base. Tous les objets (utilisateurs, ordinateurs, groupes) appartiennent à un domaine.\n\n**Unité d'organisation (OU)** : conteneur permettant de déléguer l'administration et d'appliquer des GPO de manière ciblée.\n\n**Forêt** : ensemble de domaines partageant le même schéma AD. C'est la frontière de sécurité absolue.`,
+        title: "1. Introduction à Windows Server 2022",
+        content: `Windows Server 2022 est la dernière version LTS (Long Term Servicing) de Microsoft, sortie en 2021. Elle apporte des améliorations majeures en sécurité (Secured-core server), en connectivité (SMB over QUIC) et en conteneurs (intégration Kubernetes).\n\n**Éditions disponibles** :\n- **Standard** : pour les environnements physiques ou peu virtualisés (2 VM incluses)\n- **Datacenter** : VM illimitées, fonctionnalités avancées (Storage Spaces Direct, SDN)\n- **Essentials** : TPE/PME jusqu'à 25 utilisateurs\n\n**Rôles principaux** : AD DS, DNS, DHCP, File Server, IIS, Hyper-V, Remote Desktop Services, Certificate Authority.\n\n**Méthodes d'installation** :\n- **Desktop Experience** (GUI complète) : recommandée en apprentissage\n- **Server Core** (ligne de commande) : recommandée en production (surface d'attaque réduite, moins de mises à jour)`,
+        code: {
+          lang: "powershell",
+          code: `# Vérifier la version et l'édition installée
+Get-ComputerInfo | Select-Object WindowsProductName, OsVersion, CsProcessors
+
+# Configurer le nom du serveur et l'IP statique
+Rename-Computer -NewName "SRV-DC01" -Restart
+
+# Configurer l'adresse IP statique (interface index 1)
+New-NetIPAddress -InterfaceIndex 1 -IPAddress 192.168.1.10 -PrefixLength 24 -DefaultGateway 192.168.1.1
+Set-DnsClientServerAddress -InterfaceIndex 1 -ServerAddresses 192.168.1.10
+
+# Activer le Bureau à distance (RDP)
+Set-ItemProperty -Path "HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server" -Name fDenyTSConnections -Value 0
+Enable-NetFirewallRule -DisplayGroup "Remote Desktop"`,
+        },
+        tip: "Installez toujours Windows Server en Server Core en production. La surface d'attaque est réduite de 40% et les mises à jour sont moins fréquentes.",
+      },
+      {
+        title: "2. Active Directory — Concepts et déploiement",
+        content: `Active Directory (AD DS) est un service d'annuaire qui centralise l'authentification et l'autorisation dans un réseau Windows.\n\n**Domaine** : unité d'administration de base. Tous les objets (utilisateurs, ordinateurs, groupes) appartiennent à un domaine.\n\n**Unité d'organisation (OU)** : conteneur permettant de déléguer l'administration et d'appliquer des GPO de manière ciblée.\n\n**Forêt** : ensemble de domaines partageant le même schéma AD. C'est la frontière de sécurité absolue.\n\n**Catalogue global** : index de tous les objets de la forêt, indispensable pour les recherches multi-domaines et l'authentification Exchange.`,
         code: {
           lang: "powershell",
           code: `# Installer le rôle AD DS
@@ -33,60 +54,231 @@ Install-ADDSForest \`
   -InstallDns \`
   -Force`,
         },
-        tip: "En production, déployez toujours minimum 2 contrôleurs de domaine pour la redondance. Un seul DC = point de défaillance unique.",
+        tip: "Déployez toujours minimum 2 contrôleurs de domaine. Un seul DC = point de défaillance unique qui bloque tout le réseau.",
       },
       {
-        title: "2. Gestion des stratégies de groupe (GPO)",
+        title: "3. Gestion des utilisateurs et groupes",
+        content: `La gestion des comptes est le quotidien de l'administrateur AD. Comprendre les types de groupes et les étendues est fondamental.\n\n**Types de groupes** :\n- **Sécurité** : pour les autorisations d'accès aux ressources\n- **Distribution** : pour les listes de diffusion email (Exchange)\n\n**Étendues de groupes** :\n- **Local de domaine** : membres de n'importe quel domaine, ressources du domaine local\n- **Global** : membres du même domaine, ressources de toute la forêt\n- **Universel** : membres de toute la forêt, ressources de toute la forêt\n\n**Bonne pratique AGDLP** : Accounts → Global groups → Domain Local groups → Permissions`,
+        code: {
+          lang: "powershell",
+          code: `# Créer un utilisateur
+New-ADUser -Name "Jean Dupont" \`
+  -GivenName "Jean" -Surname "Dupont" \`
+  -SamAccountName "jdupont" \`
+  -UserPrincipalName "jdupont@entreprise.local" \`
+  -Path "OU=Comptabilité,DC=entreprise,DC=local" \`
+  -AccountPassword (Read-Host -AsSecureString "Mot de passe") \`
+  -Enabled $true
+
+# Créer un groupe de sécurité global
+New-ADGroup -Name "GRP-Comptabilite" \`
+  -GroupScope Global -GroupCategory Security \`
+  -Path "OU=Groupes,DC=entreprise,DC=local"
+
+# Ajouter un utilisateur au groupe
+Add-ADGroupMember -Identity "GRP-Comptabilite" -Members "jdupont"
+
+# Lister tous les membres d'un groupe
+Get-ADGroupMember -Identity "GRP-Comptabilite" | Select Name, SamAccountName`,
+        },
+      },
+      {
+        title: "4. Stratégies de groupe (GPO)",
         content: `Les GPO (Group Policy Objects) permettent d'appliquer des paramètres de configuration à des utilisateurs ou des ordinateurs de manière centralisée. L'ordre d'application est : **Local → Site → Domaine → OU** (mémorisez LSDOU).\n\n**Héritages et blocages** : une GPO enfant hérite des GPO parentes. Vous pouvez bloquer l'héritage sur une OU ou forcer l'application avec "Appliqué".\n\n**Filtrage de sécurité** : une GPO ne s'applique qu'aux objets ayant les permissions "Lecture" et "Appliquer la stratégie de groupe".`,
         code: {
           lang: "powershell",
           code: `# Créer une nouvelle GPO
-New-GPO -Name "Politique-Securite-Postes" -Comment "GPO sécurité stations de travail"
+New-GPO -Name "Politique-Securite-Postes"
 
 # Lier la GPO à une OU
 New-GPLink -Name "Politique-Securite-Postes" -Target "OU=Postes,DC=entreprise,DC=local"
 
-# Forcer la mise à jour immédiate sur tous les postes
-Invoke-GPUpdate -Computer "PC-Comptabilite" -Force -RandomDelayInMinutes 0`,
+# Forcer la mise à jour sur tous les postes
+Invoke-GPUpdate -Computer "PC-Comptabilite" -Force -RandomDelayInMinutes 0
+
+# Générer un rapport HTML de résultante des stratégies
+Get-GPResultantSetOfPolicy -ReportType Html -Path "C:\\rapport-rsop.html"`,
         },
-        tip: "Utilisez RSOP (Resultant Set of Policy) ou gpresult /H rapport.html pour diagnostiquer quelles GPO s'appliquent réellement à un utilisateur ou machine.",
+        tip: "Utilisez gpresult /H rapport.html pour diagnostiquer quelles GPO s'appliquent réellement à un utilisateur ou machine.",
       },
       {
-        title: "3. Configuration DNS et DHCP",
-        content: `**DNS (Domain Name System)** : dans un domaine AD, le DNS est critique. Il résout les noms d'hôtes en adresses IP et surtout localise les services AD via les enregistrements SRV.\n\nTypes d'enregistrements essentiels :\n- **A** : nom → IPv4\n- **AAAA** : nom → IPv6  \n- **CNAME** : alias\n- **MX** : serveur de messagerie\n- **SRV** : localisation de services (LDAP, Kerberos...)\n- **PTR** : résolution inverse\n\n**DHCP** : distribue automatiquement les paramètres réseau (IP, masque, passerelle, DNS). Configurez toujours des **exclusions** pour les serveurs et **réservations** pour les imprimantes.`,
+        title: "5. Configuration DNS",
+        content: `Dans un domaine AD, le DNS est critique. Il résout les noms d'hôtes en adresses IP et localise les services AD via les enregistrements SRV.\n\n**Types d'enregistrements essentiels** :\n- **A** : nom → IPv4\n- **AAAA** : nom → IPv6\n- **CNAME** : alias\n- **MX** : serveur de messagerie\n- **SRV** : localisation de services (LDAP, Kerberos)\n- **PTR** : résolution inverse\n\n**Zones DNS** :\n- **Principale** : zone de référence, modifiable\n- **Secondaire** : copie en lecture seule (transfert de zone)\n- **Stub** : contient uniquement les enregistrements NS\n- **Intégrée à l'AD** : réplication automatique entre tous les DC`,
         code: {
           lang: "powershell",
-          code: `# Installer et configurer DHCP
-Install-WindowsFeature DHCP -IncludeManagementTools
+          code: `# Vérifier l'état du service DNS
+Get-Service DNS | Select Status, StartType
 
-# Créer une étendue DHCP
-Add-DhcpServerv4Scope \`
-  -Name "Réseau-LAN" \`
-  -StartRange 192.168.1.100 \`
-  -EndRange 192.168.1.200 \`
-  -SubnetMask 255.255.255.0 \`
-  -State Active
+# Ajouter un enregistrement A
+Add-DnsServerResourceRecordA -Name "serveur-web" \`
+  -ZoneName "entreprise.local" -IPv4Address "192.168.1.20"
 
-# Configurer les options (passerelle + DNS)
-Set-DhcpServerv4OptionValue -ScopeId 192.168.1.0 \`
-  -Router 192.168.1.1 \`
-  -DnsServer 192.168.1.10`,
+# Ajouter un enregistrement CNAME (alias)
+Add-DnsServerResourceRecordCName -Name "www" \`
+  -ZoneName "entreprise.local" -HostNameAlias "serveur-web.entreprise.local"
+
+# Tester la résolution DNS
+Resolve-DnsName "serveur-web.entreprise.local"
+nslookup -type=SRV _ldap._tcp.entreprise.local`,
         },
       },
       {
-        title: "4. TP — Création d'une infrastructure complète",
-        content: `**Objectif** : déployer une infrastructure Windows Server 2022 fonctionnelle avec AD DS, DNS, DHCP et 3 GPO métier.\n\n**Étapes du TP :**\n\n1. Installer Windows Server 2022 en VM (VMware/Hyper-V)\n2. Renommer le serveur : SRV-DC01\n3. Configurer une IP statique : 192.168.1.10/24\n4. Promouvoir en contrôleur de domaine (domaine : formation.local)\n5. Créer l'arborescence d'OU : Direction, Comptabilité, Informatique, Postes\n6. Créer 10 utilisateurs répartis dans les OU\n7. Créer 3 GPO : fond d'écran entreprise, désactivation USB, mapping lecteur réseau\n8. Vérifier l'application avec gpresult`,
-        tip: "Snapshot votre VM avant chaque étape critique. En cas d'erreur lors de la promotion DC, il est difficile de revenir en arrière sans restaurer.",
+        title: "6. Configuration DHCP",
+        content: `Le DHCP distribue automatiquement les paramètres réseau. Une mauvaise configuration DHCP bloque tous les postes du réseau — c'est un service critique.\n\n**Étendue (scope)** : plage d'adresses IP attribuables pour un sous-réseau.\n\n**Exclusions** : adresses réservées aux équipements à IP fixe (serveurs, imprimantes) à l'intérieur de la plage.\n\n**Réservations** : adresse IP fixe attribuée toujours au même équipement via son adresse MAC.\n\n**Options DHCP** par ordre de priorité : serveur, étendue, classe, client.`,
+        code: {
+          lang: "powershell",
+          code: `# Installer DHCP
+Install-WindowsFeature DHCP -IncludeManagementTools
+
+# Autoriser le serveur DHCP dans l'AD
+Add-DhcpServerInDC -DnsName "SRV-DC01.entreprise.local" -IPAddress 192.168.1.10
+
+# Créer une étendue
+Add-DhcpServerv4Scope -Name "LAN-Principal" \`
+  -StartRange 192.168.1.100 -EndRange 192.168.1.200 \`
+  -SubnetMask 255.255.255.0 -State Active
+
+# Options de l'étendue (passerelle + DNS)
+Set-DhcpServerv4OptionValue -ScopeId 192.168.1.0 \`
+  -Router 192.168.1.1 -DnsServer 192.168.1.10
+
+# Créer une exclusion (imprimante à IP fixe dans la plage)
+Add-DhcpServerv4ExclusionRange -ScopeId 192.168.1.0 \`
+  -StartRange 192.168.1.100 -EndRange 192.168.1.110`,
+        },
+        tip: "Configurez toujours le DHCP Failover entre 2 serveurs DHCP pour la haute disponibilité. Un seul serveur DHCP = coupure réseau garantie en cas de panne.",
+      },
+      {
+        title: "7. Partages de fichiers et NTFS",
+        content: `La gestion des accès aux fichiers repose sur deux niveaux de permissions combinés : **permissions de partage** (réseau) et **permissions NTFS** (système de fichiers). La permission effective est la plus restrictive des deux.\n\n**Permissions NTFS** (du moins au plus permissif) : Lecture, Lecture et exécution, Liste du contenu, Modification, Contrôle total.\n\n**Permissions de partage** : Lecture, Modification, Contrôle total.\n\n**Bonne pratique** : donner Contrôle total au niveau du partage et gérer finement les droits via NTFS uniquement.`,
+        code: {
+          lang: "powershell",
+          code: `# Créer un dossier partagé
+New-Item -Path "C:\\Partages\\Commun" -ItemType Directory
+New-SmbShare -Name "Commun" -Path "C:\\Partages\\Commun" \`
+  -FullAccess "Administrateurs" \`
+  -ChangeAccess "GRP-Employes" \`
+  -ReadAccess "Tout le monde"
+
+# Modifier les permissions NTFS
+$acl = Get-Acl "C:\\Partages\\Commun"
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+  "GRP-Employes", "Modify", "ContainerInherit,ObjectInherit", "None", "Allow"
+)
+$acl.SetAccessRule($rule)
+Set-Acl "C:\\Partages\\Commun" $acl
+
+# Vérifier les partages actifs
+Get-SmbShare | Where-Object {$_.Name -notlike "*$"}`,
+        },
+      },
+      {
+        title: "8. Surveillance et journaux d'événements",
+        content: `L'Observateur d'événements Windows (Event Viewer) centralise tous les journaux système. En entreprise, ces journaux sont centralisés vers un SIEM.\n\n**Journaux essentiels** :\n- **Sécurité** : connexions, échecs d'auth, modifications de comptes → audit obligatoire\n- **Système** : erreurs matérielles et OS\n- **Application** : erreurs applicatives\n- **DNS Server / DFS / DHCP** : journaux des rôles\n\n**IDs d'événements clés** : 4624 (connexion réussie), 4625 (échec), 4720 (compte créé), 4740 (compte verrouillé), 7045 (nouveau service).`,
+        code: {
+          lang: "powershell",
+          code: `# Consulter les 20 dernières erreurs système
+Get-EventLog -LogName System -EntryType Error -Newest 20 | Select TimeGenerated, Source, Message
+
+# Chercher les échecs de connexion (brute-force)
+Get-WinEvent -FilterHashtable @{LogName="Security"; Id=4625} | \`
+  Select TimeCreated, @{n="Compte";e={$_.Properties[5].Value}}, \`
+  @{n="IP Source";e={$_.Properties[19].Value}} | Select -First 20
+
+# Exporter les logs de sécurité vers CSV
+Get-WinEvent -LogName Security -MaxEvents 1000 | \`
+  Export-Csv "C:\\Logs\\securite-$(Get-Date -f yyyyMMdd).csv" -NoTypeInformation
+
+# Activer l'audit des connexions (via GPO ou commande)
+auditpol /set /subcategory:"Logon" /success:enable /failure:enable`,
+        },
+      },
+      {
+        title: "9. Sauvegarde avec Windows Server Backup",
+        content: `La sauvegarde est une obligation légale dans de nombreux secteurs et une nécessité absolue en production. Windows Server Backup (WSB) est l'outil natif de Microsoft.\n\n**Types de sauvegardes** :\n- **Complète** : tout le système, longue mais autonome\n- **Incrémentielle** : uniquement les changements depuis la dernière sauvegarde\n- **Différentielle** : changements depuis la dernière sauvegarde complète\n\n**Règle du 3-2-1** : 3 copies, 2 supports différents, 1 hors-site.\n\n**Sauvegarde AD** : utilisez la fonctionnalité "System State" pour sauvegarder AD DS. Une sauvegarde système seule ne suffit pas pour restaurer un DC.`,
+        code: {
+          lang: "powershell",
+          code: `# Installer la fonctionnalité Windows Server Backup
+Install-WindowsFeature Windows-Server-Backup
+
+# Sauvegarde complète vers un disque externe (D:)
+$policy = New-WBPolicy
+$fileSpec = New-WBFileSpec -FileSpec "C:\\"
+Add-WBFileSpec -Policy $policy -FileSpec $fileSpec
+Set-WBVssBackupOption -Policy $policy -VssFull
+$backupLocation = New-WBBackupTarget -VolumePath "D:\\"
+Add-WBBackupTarget -Policy $policy -Target $backupLocation
+Start-WBBackup -Policy $policy
+
+# Vérifier l'historique des sauvegardes
+Get-WBSummary
+
+# Planifier une sauvegarde quotidienne à 2h du matin
+Set-WBSchedule -Policy $policy -Schedule 02:00`,
+        },
+        tip: "Testez votre plan de restauration au moins une fois par trimestre dans un environnement isolé. Une sauvegarde non testée n'est pas une sauvegarde.",
+      },
+      {
+        title: "10. Sécurisation du contrôleur de domaine",
+        content: `Le contrôleur de domaine est la cible n°1 des attaquants dans un réseau Windows. Le compromettre = compromission totale de l'entreprise (Pass-the-Hash, Golden Ticket, DCSync).\n\n**Mesures de sécurisation** :\n1. **Tiering model** : comptes Admin de niveaux 0/1/2 séparés (ne jamais utiliser un compte admin du domaine pour surfer sur Internet)\n2. **Protected Users** : groupe AD qui désactive NTLM, Kerberos DES/RC4, mise en cache des credentials\n3. **Credential Guard** : isole les secrets LSASS dans une VM sécurisée\n4. **LAPS** : génère des mots de passe administrateurs locaux uniques et aléatoires\n5. **Fine-Grained Password Policy** : politiques de mots de passe différentes selon les OU`,
+        code: {
+          lang: "powershell",
+          code: `# Activer Protected Users pour les comptes sensibles
+Add-ADGroupMember -Identity "Protected Users" -Members "Administrateur","svc-backup"
+
+# Installer et configurer LAPS (Local Admin Password Solution)
+# Prérequis : LAPS installé sur les clients via GPO
+Install-Module -Name LAPS -Force
+Update-LapsADSchema
+Set-LapsADComputerSelfPermission -Identity "OU=Postes,DC=entreprise,DC=local"
+
+# Voir le mot de passe LAPS d'un poste
+Get-LapsADPassword -Identity "PC-COMPTA01" -AsPlainText
+
+# Vérifier les membres du groupe Admins du domaine (surveillance)
+Get-ADGroupMember "Domain Admins" | Select Name, SamAccountName`,
+        },
+        tip: "Le compte Administrateur intégré (RID 500) ne peut pas être verrouillé par les politiques de mots de passe. Désactivez-le et créez un compte admin avec un nom différent.",
+      },
+      {
+        title: "11. TP — Infrastructure complète",
+        content: `**Objectif du TP** : déployer une infrastructure Windows Server 2022 complète et fonctionnelle.\n\n**Scénario** : vous êtes l'administrateur réseau de la société "TechFormation SAS" (50 utilisateurs répartis en 4 services : Direction, RH, Informatique, Commercial).\n\n**Étapes à réaliser** :\n1. Installer Windows Server 2022 en VM (8 Go RAM, 80 Go disque)\n2. Configurer l'IP statique et renommer le serveur SRV-DC01\n3. Installer et promouvoir en DC du domaine techformation.local\n4. Créer l'arborescence d'OU : Direction, RH, Informatique, Commercial, Postes, Groupes\n5. Créer 12 utilisateurs (3 par service) avec des mots de passe conformes\n6. Créer les groupes de sécurité globaux par service\n7. Configurer DHCP (plage 192.168.10.100-200) avec exclusion .100-.110\n8. Créer 3 GPO : fond d'écran unifié, désactivation des clés USB, mappage de lecteur réseau\n9. Créer un partage \\\\SRV-DC01\\Commun avec droits par groupe\n10. Tester avec un poste client Windows 10 joint au domaine`,
+        tip: "Créez un snapshot de votre VM après chaque étape réussie. En cas d'erreur, vous pouvez revenir à l'état précédent sans tout recommencer.",
+      },
+      {
+        title: "12. QCM de validation",
+        content: `Testez vos connaissances sur l'ensemble du cours Windows Server 2022. Le QCM couvre tous les modules : AD DS, GPO, DNS, DHCP, partages, sécurité.\n\n**10 questions — durée estimée : 15 minutes**\n\nUn score de 70% minimum est requis pour valider le module et débloquer le badge TSSR-Windows.`,
       },
     ],
   },
-
   "linux-debian-admin": {
     slug: "linux-debian-admin",
-    intro: "Linux est le système d'exploitation dominant dans les environnements serveur, cloud et embarqué. Debian/Ubuntu sont les distributions les plus utilisées en entreprise. Ce cours vous donne les bases solides pour administrer des serveurs Linux en production : gestion des services, sécurité SSH, automatisation Bash.",
+    intro: "Linux Debian/Ubuntu Server est le système d'exploitation open-source incontournable pour les serveurs en entreprise. Ce cours vous forme à l'administration système complète : gestion des utilisateurs, services, sécurité SSH, firewall et automatisation par scripts Bash.",
     sections: [
       {
-        title: "1. Architecture Linux et système de fichiers",
+        title: "1. Installation et premiers pas",
+        content: `Debian est une distribution GNU/Linux stable et fiable, base de nombreuses distributions (Ubuntu, Mint, Kali). Pour un serveur, choisissez toujours l'installation **minimale** sans interface graphique.\n\n**Partitionnement recommandé** :\n- /boot : 512 Mo (ext4)\n- / : 20 Go (ext4)\n- /var : 10 Go (ext4, pour les logs)\n- /home : reste (ext4)\n- swap : 2x RAM (jusqu'à 8 Go)\n\n**Après installation** : mettez à jour le système, configurez sudo, définissez une IP statique dans /etc/network/interfaces.`,
+        code: {
+          lang: "bash",
+          code: `# Mise à jour du système
+apt update && apt upgrade -y
+
+# Installer sudo et ajouter l'utilisateur
+apt install sudo
+usermod -aG sudo votre_utilisateur
+
+# Configurer une IP statique (/etc/network/interfaces)
+auto eth0
+iface eth0 inet static
+  address 192.168.1.20
+  netmask 255.255.255.0
+  gateway 192.168.1.1
+  dns-nameservers 8.8.8.8 1.1.1.1`,
+        },
+        tip: "Installez toujours le paquet 'openssh-server' lors de l'installation pour pouvoir administrer le serveur à distance dès le premier boot.",
+      },
+      {
+        title: "2. Système de fichiers et permissions",
         content: `Linux repose sur une architecture en couches : **noyau (kernel)**, bibliothèques système, shell, applications.\n\n**Hiérarchie du système de fichiers (FHS)** :\n- **/etc** : fichiers de configuration\n- **/var** : données variables (logs, bases de données)\n- **/home** : répertoires utilisateurs\n- **/usr** : programmes et bibliothèques\n- **/tmp** : fichiers temporaires\n- **/proc** : pseudo-filesystem (état du noyau en temps réel)\n- **/sys** : interface avec le matériel\n\n**Permissions** : chaque fichier a un propriétaire (user), un groupe (group) et des droits pour les autres (others). Format octal : 755 = rwxr-xr-x.`,
         code: {
           lang: "bash",
